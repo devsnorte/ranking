@@ -1,32 +1,44 @@
-export type GithubContributionType =
-  | "commit"
-  | "pr_merged"
-  | "pr_comment"
-  | "issue_opened"
-  | "issue_comment"
+export enum GithubContributionType {
+  COMMIT = "commit",
+  PULL_REQUEST = "pull_request",
+  PULL_REQUEST_COMMENT = "pull_request_comment",
+  ISSUE = "issue",
+  ISSUE_COMMENT = "issue_comment",
+}
 
-export const GITHUB_CONTRIBUTION_TYPES = {
-  commit: {
-    label: "Commit to Main Branch",
-    points: 3,
-  },
-  pr_merged: {
-    label: "Merged Pull Request",
+export interface GithubContributionInfo {
+  label: string
+  points: number
+  description: string
+}
+
+export const GITHUB_CONTRIBUTION_TYPES: Record<GithubContributionType, GithubContributionInfo> = {
+  [GithubContributionType.COMMIT]: {
+    label: "Commits",
     points: 5,
+    description: "Commits to main/master branch",
   },
-  pr_comment: {
-    label: "Pull Request Comment",
+  [GithubContributionType.PULL_REQUEST]: {
+    label: "Merged PRs",
+    points: 20,
+    description: "Pull requests merged to main/master",
+  },
+  [GithubContributionType.PULL_REQUEST_COMMENT]: {
+    label: "PR Comments",
+    points: 3,
+    description: "Comments on pull requests",
+  },
+  [GithubContributionType.ISSUE]: {
+    label: "Issues",
+    points: 2,
+    description: "Issues opened",
+  },
+  [GithubContributionType.ISSUE_COMMENT]: {
+    label: "Issue Comments",
     points: 1,
+    description: "Comments on issues",
   },
-  issue_opened: {
-    label: "Opened Issue",
-    points: 1,
-  },
-  issue_comment: {
-    label: "Issue Comment",
-    points: 1,
-  },
-} as const
+}
 
 export function getGithubContributionLabel(type: GithubContributionType): string {
   return GITHUB_CONTRIBUTION_TYPES[type].label
@@ -34,4 +46,8 @@ export function getGithubContributionLabel(type: GithubContributionType): string
 
 export function getGithubContributionPoints(type: GithubContributionType): number {
   return GITHUB_CONTRIBUTION_TYPES[type].points
+}
+
+export function getGithubContributionDescription(type: GithubContributionType): string {
+  return GITHUB_CONTRIBUTION_TYPES[type].description
 }

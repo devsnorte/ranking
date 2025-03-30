@@ -9,6 +9,7 @@ import { Progress } from "@/components/ui/progress"
 import { Loader2, CheckCircle2, AlertCircle, RefreshCw } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/lib/auth-provider"
+import { GithubContributionType, getGithubContributionLabel, getGithubContributionPoints } from "@/lib/types/github"
 
 interface GithubContributionScannerProps {
   userId: string
@@ -303,22 +304,12 @@ export default function GithubContributionScanner({ userId }: GithubContribution
       <div className="bg-muted p-4 rounded-lg">
         <h3 className="font-medium mb-2">Point System</h3>
         <ul className="space-y-1 text-sm">
-          <li className="flex justify-between">
-            <span>Comment in issue</span>
-            <span className="font-medium">1 point</span>
-          </li>
-          <li className="flex justify-between">
-            <span>Issues opened</span>
-            <span className="font-medium">2 points</span>
-          </li>
-          <li className="flex justify-between">
-            <span>PR comment</span>
-            <span className="font-medium">3 points</span>
-          </li>
-          <li className="flex justify-between">
-            <span>PR merged</span>
-            <span className="font-medium">5 points</span>
-          </li>
+          {Object.entries(GithubContributionType).map(([type, value]) => (
+            <li key={type} className="flex justify-between">
+              <span>{getGithubContributionLabel(value)}</span>
+              <span className="font-medium">{getGithubContributionPoints(value)} points</span>
+            </li>
+          ))}
         </ul>
       </div>
     </div>
