@@ -87,6 +87,29 @@ export interface Database {
           points?: number
         }
       }
+      event_participation: {
+        Row: {
+          id: string
+          event_id: string
+          user_id: string
+          joined_at: string
+          points_awarded: boolean
+        }
+        Insert: {
+          id?: string
+          event_id: string
+          user_id: string
+          joined_at?: string
+          points_awarded?: boolean
+        }
+        Update: {
+          id?: string
+          event_id?: string
+          user_id?: string
+          joined_at?: string
+          points_awarded?: boolean
+        }
+      }
       github_contributions: {
         Row: {
           id: string
