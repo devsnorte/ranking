@@ -38,7 +38,7 @@ export default async function PublicLeaderboardPage() {
                   <CardDescription>Top contributors across all categories</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <LeaderboardTable data={overall} />
+                  <PublicLeaderboardTable data={overall} />
                 </CardContent>
               </Card>
             </TabsContent>
@@ -53,7 +53,7 @@ export default async function PublicLeaderboardPage() {
                   <CardDescription>Top GitHub contributors</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <LeaderboardTable data={github} />
+                  <PublicLeaderboardTable data={github} />
                 </CardContent>
               </Card>
             </TabsContent>
@@ -68,7 +68,7 @@ export default async function PublicLeaderboardPage() {
                   <CardDescription>Most active event participants</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <LeaderboardTable data={events} />
+                  <PublicLeaderboardTable data={events} />
                 </CardContent>
               </Card>
             </TabsContent>
@@ -83,7 +83,7 @@ export default async function PublicLeaderboardPage() {
                   <CardDescription>Most active Discord participants</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <LeaderboardTable data={discord} />
+                  <PublicLeaderboardTable data={discord} />
                 </CardContent>
               </Card>
             </TabsContent>
@@ -94,7 +94,7 @@ export default async function PublicLeaderboardPage() {
   )
 }
 
-interface LeaderboardTableProps {
+interface PublicLeaderboardTableProps {
   data: Array<{
     id: string
     name: string
@@ -102,63 +102,52 @@ interface LeaderboardTableProps {
     points: number
     rank: number
   }>
-  currentUserId?: string
 }
 
-function LeaderboardTable({ data, currentUserId }: LeaderboardTableProps) {
+function PublicLeaderboardTable({ data }: PublicLeaderboardTableProps) {
   return (
-    <div className="relative overflow-x-auto">
-      <table className="w-full text-sm text-left">
-        <thead className="text-xs uppercase bg-muted">
-          <tr>
-            <th scope="col" className="px-6 py-3">
-              Rank
-            </th>
-            <th scope="col" className="px-6 py-3">
-              User
-            </th>
-            <th scope="col" className="px-6 py-3 text-right">
-              Points
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {data.length > 0 ? (
-            data.map((entry) => (
-              <tr key={entry.id} className={`border-b ${entry.id === currentUserId ? "bg-primary/10" : ""}`}>
-                <td className="px-6 py-4">
-                  {entry.rank === 1 && <TrophyIcon className="h-4 w-4 text-yellow-500 inline mr-1" />}
-                  {entry.rank === 2 && <TrophyIcon className="h-4 w-4 text-gray-400 inline mr-1" />}
-                  {entry.rank === 3 && <TrophyIcon className="h-4 w-4 text-amber-700 inline mr-1" />}
+    <div className="grid gap-4">
+      {data.length > 0 ? (
+        data.map((entry) => (
+          <div
+            key={entry.id}
+            className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
+          >
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-muted-foreground w-6">
                   {entry.rank}
-                </td>
-                <td className="px-6 py-4 font-medium flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center overflow-hidden">
-                    {entry.avatar_url ? (
-                      <img
-                        src={entry.avatar_url || "/placeholder.svg"}
-                        alt={entry.name}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      entry.name.charAt(0).toUpperCase()
-                    )}
-                  </div>
-                  <span>{entry.name}</span>
-                  {entry.id === currentUserId && <span className="text-xs text-muted-foreground">(You)</span>}
-                </td>
-                <td className="px-6 py-4 text-right font-bold">{entry.points}</td>
-              </tr>
-            ))
-          ) : (
-            <tr>
-              <td colSpan={3} className="px-6 py-4 text-center">
-                No data available
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+                </span>
+                {entry.rank === 1 && <TrophyIcon className="h-4 w-4 text-yellow-500" />}
+                {entry.rank === 2 && <TrophyIcon className="h-4 w-4 text-gray-400" />}
+                {entry.rank === 3 && <TrophyIcon className="h-4 w-4 text-amber-700" />}
+              </div>
+              <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center overflow-hidden">
+                {entry.avatar_url ? (
+                  <img
+                    src={entry.avatar_url}
+                    alt={entry.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <span className="text-lg font-medium">
+                    {entry.name.charAt(0).toUpperCase()}
+                  </span>
+                )}
+              </div>
+              <span className="font-medium">{entry.name}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-lg font-bold">{entry.points}</span>
+              <span className="text-sm text-muted-foreground">points</span>
+            </div>
+          </div>
+        ))
+      ) : (
+        <div className="text-center py-8 text-muted-foreground">
+          No data available
+        </div>
+      )}
     </div>
   )
 }
