@@ -8,8 +8,8 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Progress } from "@/components/ui/progress"
 import { Loader2, CheckCircle2, AlertCircle, RefreshCw } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import { scanGitHubContributions } from "@/lib/github-scanner"
 import { useAuth } from "@/lib/auth-provider"
+import { GithubContributionType, getGithubContributionLabel, getGithubContributionPoints } from "@/lib/types/github"
 
 interface GithubContributionScannerProps {
   userId: string
@@ -27,6 +27,8 @@ export default function GithubContributionScanner({ userId }: GithubContribution
     dbTest?: any
   }>({})
   const [githubUsername, setGithubUsername] = useState<string | null>(null)
+  const [scanStatus, setScanStatus] = useState<string>("")
+  const [scanId, setScanId] = useState<string | null>(null)
   const router = useRouter()
   const { toast } = useToast()
   const { user } = useAuth()
@@ -40,6 +42,84 @@ export default function GithubContributionScanner({ userId }: GithubContribution
     }
   }, [user])
 
+  // Function to check scan status
+  const checkScanStatus = async (id: string) => {
+    try {
+      const response = await fetch(`/api/github/scan/status?scanId=${id}`)
+      if (!response.ok) {
+        throw new Error("Failed to check scan status")
+      }
+
+      const { scan } = await response.json()
+
+      if (scan.status === "completed") {
+        setScanProgress(100)
+        setScanStatus("Scan completed!")
+        setIsScanning(false)
+        setScanResult({
+          success: true,
+          message: scan.contributions_count > 0
+            ? `Found ${scan.contributions_count} new contributions worth ${scan.total_points} points!`
+            : "No new contributions found. You're all caught up!",
+          totalPoints: scan.total_points,
+        })
+
+        toast({
+          title: "Scan completed",
+          description: scan.contributions_count > 0
+            ? `Found ${scan.contributions_count} new contributions worth ${scan.total_points} points!`
+            : "No new contributions found. You're all caught up!",
+        })
+
+        router.refresh()
+        return true
+      } else if (scan.status === "failed") {
+        setScanProgress(0)
+        setScanStatus("Scan failed")
+        setIsScanning(false)
+        setScanResult({
+          success: false,
+          message: scan.error || "Failed to scan GitHub contributions",
+          error: scan.error,
+        })
+
+        toast({
+          title: "Scan failed",
+          description: scan.error || "Failed to scan GitHub contributions",
+          variant: "destructive",
+        })
+        return true
+      } else {
+        setScanProgress(scan.progress || 0)
+        setScanStatus(scan.status === "processing" ? "Scanning repositories..." : "Initializing scan...")
+        return false
+      }
+    } catch (error: any) {
+      console.error("Error checking scan status:", error)
+      return false
+    }
+  }
+
+  // Effect to poll scan status
+  useEffect(() => {
+    let interval: NodeJS.Timeout
+
+    if (scanId && isScanning) {
+      interval = setInterval(async () => {
+        const isComplete = await checkScanStatus(scanId)
+        if (isComplete) {
+          clearInterval(interval)
+        }
+      }, 2000)
+    }
+
+    return () => {
+      if (interval) {
+        clearInterval(interval)
+      }
+    }
+  }, [scanId, isScanning])
+
   const handleScan = async () => {
     if (!githubUsername) {
       toast({
@@ -52,53 +132,24 @@ export default function GithubContributionScanner({ userId }: GithubContribution
 
     setIsScanning(true)
     setScanResult({})
-    setScanProgress(10) // Start progress at 10%
-
-    // Set up a progress simulation
-    const progressInterval = setInterval(() => {
-      setScanProgress((prev) => {
-        // Gradually increase progress, but never reach 100% until complete
-        const increment = Math.random() * 10
-        const newProgress = prev + increment
-        return newProgress > 90 ? 90 : newProgress
-      })
-    }, 1000)
+    setScanProgress(10)
+    setScanStatus("Initializing scan...")
 
     try {
-      const result = await scanGitHubContributions(githubUsername, userId)
+      // Start the background scan
+      const response = await fetch(`/api/github/scan?username=${encodeURIComponent(githubUsername)}&userId=${userId}`)
+      if (!response.ok) {
+        throw new Error("Failed to start scan")
+      }
 
-      // Clear the interval and set progress to 100%
-      clearInterval(progressInterval)
-      setScanProgress(100)
-
-      setScanResult({
-        success: true,
-        message:
-          result.contributions.length > 0
-            ? `Found ${result.contributions.length} new contributions worth ${result.totalPoints} points!`
-            : "No new contributions found. You're all caught up!",
-        contributions: result.contributions,
-        totalPoints: result.totalPoints,
-      })
-
-      toast({
-        title: "Scan completed",
-        description:
-          result.contributions.length > 0
-            ? `Found ${result.contributions.length} new contributions worth ${result.totalPoints} points!`
-            : "No new contributions found. You're all caught up!",
-      })
-
-      // Refresh the page data
-      router.refresh()
+      const { scanId: newScanId } = await response.json()
+      setScanId(newScanId)
     } catch (error: any) {
-      // Clear the interval on error
-      clearInterval(progressInterval)
+      setIsScanning(false)
       setScanProgress(0)
+      setScanStatus("Failed to start scan")
 
-      const errorMessage = error.message || "Failed to scan GitHub contributions"
-      const isDatabaseError = errorMessage.includes("Failed to save")
-
+      const errorMessage = error.message || "Failed to start GitHub scan"
       setScanResult({
         success: false,
         message: errorMessage,
@@ -106,14 +157,10 @@ export default function GithubContributionScanner({ userId }: GithubContribution
       })
 
       toast({
-        title: isDatabaseError ? "Database Error" : "Scan failed",
+        title: "Scan failed",
         description: errorMessage,
         variant: "destructive",
       })
-    } finally {
-      setIsScanning(false)
-      // Clear the interval just in case
-      clearInterval(progressInterval)
     }
   }
 
@@ -186,12 +233,12 @@ export default function GithubContributionScanner({ userId }: GithubContribution
         {isScanning && (
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
-              <span>Scanning repositories...</span>
+              <span>{scanStatus}</span>
               <span>{Math.round(scanProgress)}%</span>
             </div>
             <Progress value={scanProgress} className="h-2" />
             <p className="text-xs text-muted-foreground">
-              This may take a minute. We're scanning the most active repositories first.
+              This may take a few minutes. We're scanning all repositories in parallel while respecting GitHub's rate limits.
             </p>
           </div>
         )}
@@ -257,22 +304,12 @@ export default function GithubContributionScanner({ userId }: GithubContribution
       <div className="bg-muted p-4 rounded-lg">
         <h3 className="font-medium mb-2">Point System</h3>
         <ul className="space-y-1 text-sm">
-          <li className="flex justify-between">
-            <span>Comment in issue</span>
-            <span className="font-medium">1 point</span>
-          </li>
-          <li className="flex justify-between">
-            <span>Issues opened</span>
-            <span className="font-medium">2 points</span>
-          </li>
-          <li className="flex justify-between">
-            <span>PR comment</span>
-            <span className="font-medium">3 points</span>
-          </li>
-          <li className="flex justify-between">
-            <span>PR merged</span>
-            <span className="font-medium">5 points</span>
-          </li>
+          {Object.entries(GithubContributionType).map(([type, value]) => (
+            <li key={type} className="flex justify-between">
+              <span>{getGithubContributionLabel(value)}</span>
+              <span className="font-medium">{getGithubContributionPoints(value)} points</span>
+            </li>
+          ))}
         </ul>
       </div>
     </div>

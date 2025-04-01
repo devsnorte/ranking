@@ -1,9 +1,12 @@
 import { createServerClient } from "@/lib/supabase-server"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { GitlabIcon as GitHubLogoIcon, CalendarIcon, MessageSquareIcon, TrophyIcon } from "lucide-react"
+import { GitlabIcon as GitHubLogoIcon, CalendarIcon, MessageSquareIcon, TrophyIcon, ScanIcon } from "lucide-react"
 import { getUserPoints } from "@/lib/points"
 import ActivityFeed from "@/components/activity-feed"
+import { GithubScanForm } from "./github/components/github-scan-form"
+import { GithubScanHistory } from "./github/components/github-scan-history"
+import { GITHUB_CONTRIBUTION_TYPES } from "@/lib/types/github"
 
 export default async function DashboardPage() {
   const supabase = await createServerClient()
@@ -13,6 +16,13 @@ export default async function DashboardPage() {
 
   // Get user points from different categories
   const { totalPoints, githubPoints, eventPoints, discordPoints } = await getUserPoints(user?.id || "")
+
+  // Get GitHub scan history
+  const { data: scanHistory } = await supabase
+    .from("github_scans")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(10)
 
   return (
     <div className="space-y-6">
@@ -66,6 +76,10 @@ export default async function DashboardPage() {
         <TabsList>
           <TabsTrigger value="activity">Recent Activity</TabsTrigger>
           <TabsTrigger value="upcoming">Upcoming Events</TabsTrigger>
+          <TabsTrigger value="github">
+            <ScanIcon className="mr-2 h-4 w-4" />
+            GitHub Scan
+          </TabsTrigger>
         </TabsList>
         <TabsContent value="activity" className="space-y-4">
           <ActivityFeed userId={user?.id || ""} />
@@ -80,6 +94,32 @@ export default async function DashboardPage() {
               <p className="text-sm text-muted-foreground">No upcoming events at the moment.</p>
             </CardContent>
           </Card>
+        </TabsContent>
+        <TabsContent value="github" className="space-y-6">
+          <div>
+            <h3 className="text-lg font-medium">GitHub Contribution Points</h3>
+            <p className="text-sm text-muted-foreground">
+              Scan your GitHub contributions and earn points for your activity.
+            </p>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {Object.entries(GITHUB_CONTRIBUTION_TYPES).map(([type, { label, points }]) => (
+              <Card key={type}>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">{label}</CardTitle>
+                  <GitHubLogoIcon className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{points}</div>
+                  <p className="text-xs text-muted-foreground">points per contribution</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          <GithubScanForm />
+          <GithubScanHistory initialScans={scanHistory || []} />
         </TabsContent>
       </Tabs>
     </div>
