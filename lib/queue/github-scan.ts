@@ -24,12 +24,15 @@ export interface GithubScanJobData {
   scanId: string
 }
 
+// Redis connection configuration
+const redisConnection = {
+  host: process.env.REDIS_HOST || "localhost",
+  port: Number(process.env.REDIS_PORT) || 6379,
+}
+
 // Create BullMQ queue for GitHub scanning
 const githubScanQueue = new Queue<GithubScanJobData>("github-scan", {
-  connection: {
-    host: process.env.REDIS_HOST || "localhost",
-    port: Number(process.env.REDIS_PORT) || 6379,
-  },
+  connection: process.env.REDIS_URL ? { url: process.env.REDIS_URL } : redisConnection,
   defaultJobOptions: {
     attempts: 3,
     backoff: {
@@ -240,10 +243,7 @@ const worker = new Worker<GithubScanJobData>(
     }
   },
   {
-    connection: {
-      host: process.env.REDIS_HOST || "localhost",
-      port: Number(process.env.REDIS_PORT) || 6379,
-    },
+    connection: process.env.REDIS_URL ? { url: process.env.REDIS_URL } : redisConnection,
   },
 )
 
